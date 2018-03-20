@@ -78,7 +78,7 @@ my $debug=0;
 
 
 # Option names
-my ($version,$help,$fast,$showconfig,$so,$postscript,$pdf,$onlychanges,$flatten,$force,$dir,$cvs,$rcs,$svn,$git,$hg,
+my ($version,$help,$fast,$showconfig,$so,$postscript,$pdf,$onlychanges,$flatten,$force,$dir,$cvs,$rcs,$svn,$git,$hg,$hookcommand,
     $run,$rundvi2,$diffcmd,$patchcmd,@revs,@configlist);
 # for passing through config options to latexdiff:
 my ($configlatexdiff,@config,$config,$assign);
@@ -111,6 +111,7 @@ GetOptions('revision|r:s' => \@revs,
            'svn' => \$svn,
            'git' => \$git,
            'hg' => \$hg,
+           'hook=s' => \$hookcommand,
            'dir|d:s' => \$dir,
 	   'run' => \$run,
 	   'dvi' => \$rundvi2,
@@ -411,6 +412,11 @@ while ( $infile=$file2=shift @files ) {
        my $olddir=$tempdir . "/latexdiff-vc-$revs[0]";
        print STDERR "Checking out old dir into: $olddir (rev: $revs[0])\n";
        checkout_dir($revs[0],$olddir);
+       ### execute the hook if specified in the old and current directories
+       if ( defined($hookcommand) ) {
+           system($hookcommand);
+           system("cd " . $olddir . "; " . $hookcommand);
+       }
 ###       print STDERR "DEBUG olddir $olddir";
 ###       unless (-e $olddir) { mkdir $olddir or die "Cannot mkdir $olddir ." ;}
 ###       print STDERR "DEBUG svn checkout -r $revs[0] $rootdir $olddir";
@@ -432,10 +438,19 @@ while ( $infile=$file2=shift @files ) {
       print STDERR "Checking out old dir into: $olddir (rev: $revs[0])\n";
       checkout_dir($revs[0],$olddir);
       $file1=$olddir ."/".$infile;
+      ### execute the hook if specified in the old directory
+      if ( defined($hookcommand) ) {
+          system("cd " . $olddir . "; " . $hookcommand);
+      }
 
       my $newdir=$tempdir . "/latexdiff-vc-$revs[1]";
       print STDERR "Checking out new dir into: $newdir\n";
       checkout_dir($revs[1],$newdir);
+      ### execute the hook if specified in the old directory
+      if ( defined($hookcommand) ) {
+          system("cd " . $newdir . "; " . $hookcommand);
+      }
+
       $file2=$newdir ."/".$infile;
     } else {
       ($file1=$infile) =~ s/\.(tex|bbl|flt)/-oldtmp-$$.$1/ ;
